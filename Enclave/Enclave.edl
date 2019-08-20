@@ -1,11 +1,19 @@
 enclave {
+    include "sgx_dh.h"
+
     trusted {
         /* define ECALLs here. */
-        public int get_sum(int a, int b);
+        public sgx_status_t aes_ctr_128_encrypt([in, count=pt_len] const uint8_t *plaintext, uint32_t pt_len, [out]uint8_t *ciphertext, [out]uint32_t *nonce);
+        public sgx_status_t aes_ctr_128_decrypt(uint32_t nonce, [in, count=ct_len] const uint8_t *ciphertext, uint32_t ct_len, [out] uint8_t *plaintext);
+        public sgx_status_t initiator_init_session();
+        public sgx_status_t responder_init_session();
+        public sgx_status_t responder_gen_msg1([in, count=1] sgx_dh_msg1_t *msg1);
+        public sgx_status_t initiator_proc_msg1([in, count=1] const sgx_dh_msg1_t *msg1, [out, count=1] sgx_dh_msg2_t *msg2);
+        public sgx_status_t responder_proc_msg2([in, count=1] const sgx_dh_msg2_t *msg2, [out, count=1] sgx_dh_msg3_t *msg3);
+        public sgx_status_t initiator_proc_msg3([in, count=1] const sgx_dh_msg3_t *msg3);
     };
 
     untrusted {
         /* define OCALLs here. */
-        void ocall_print([in, string]const char* str);
     };
 };
