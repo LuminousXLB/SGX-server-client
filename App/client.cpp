@@ -1,18 +1,17 @@
-#include "csapp.h"
+#include "net_utils/net_utils.h"
 
 void run_client(const char *host, const char *port)
 {
-    int clientfd;
-    char buf[MAXLINE];
-    rio_t rio;
+    int clientfd = Open_clientfd(host, port);
 
-    clientfd = Open_clientfd(host, port);
-    Rio_readinitb(&rio, clientfd);
+    char buf[MAXLINE];
+
+    uint32_t length = 2;
 
     while (Fgets(buf, MAXLINE, stdin) != NULL)
     {
-        Rio_writen(clientfd, buf, strlen(buf));
-        Rio_readlineb(&rio, buf, MAXLINE);
+        write_socket(clientfd, (uint8_t *)buf, strlen(buf));
+        read_socket(clientfd, (uint8_t *)buf, MAXLINE);
         Fputs(buf, stdout);
     }
     Close(clientfd);

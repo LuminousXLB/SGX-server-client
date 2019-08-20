@@ -1,17 +1,14 @@
-#include "csapp.h"
+#include "net_utils/net_utils.h"
 
 void echo(int connfd)
 {
-    size_t n;
+    int64_t n;
     char buf[MAXLINE];
-    rio_t rio;
 
-    Rio_readinitb(&rio, connfd);
-    while ((n = Rio_readlineb(&rio, buf, MAXLINE)) != 0)
+    while ((n = read_socket(connfd, (uint8_t *)buf, MAXLINE)) > 0)
     {
-        //line:netp:echo:eof
         printf("server received %d bytes\n", (int)n);
-        Rio_writen(connfd, buf, n);
+        write_socket(connfd, (uint8_t *)buf, n);
     }
 }
 

@@ -1,7 +1,7 @@
 #include "string.h"
 #include "Enclave_t.h"
 #include <stdio.h>
-/* TODO: Add SGX trusted libraries headers if needed */ 
+/* TODO: Add SGX trusted libraries headers if needed */
 
 #define SECRET_FILE "enclave_secret"
 
@@ -15,9 +15,10 @@ void printf(const char *fmt, ...)
     ocall_print(buf);
 }
 
-int get_sum(int a, int b) {
-	ocall_print("Adding numbers inside enclave...");
-	return a + b;
+int get_sum(int a, int b)
+{
+    ocall_print("Adding numbers inside enclave...");
+    return a + b;
 }
 
 /* TODO 1: Generate a random unsigned int using a trusted library 
