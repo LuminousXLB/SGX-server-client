@@ -61,6 +61,12 @@ sgx_status_t initiator_proc_msg1(const sgx_dh_msg1_t *msg1, sgx_dh_msg2_t *msg2)
     REQUIRED(msg1);
     REQUIRED(msg2);
 
+    sgx_dh_msg1_t msg1_cpy;
+    memcpy_s(&msg1_cpy, sizeof(sgx_dh_msg1_t), msg1, sizeof(sgx_dh_msg1_t));
+
+    sgx_dh_msg1_t msg2_cpy;
+    memcpy_s(&msg2_cpy, sizeof(sgx_dh_msg2_t), msg2, sizeof(sgx_dh_msg2_t));
+
     return sgx_dh_initiator_proc_msg1(msg1, msg2, &sgx_dh_session);
 }
 

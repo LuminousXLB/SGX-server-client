@@ -58,7 +58,7 @@ int main(int argc, char const *argv[])
         return 0;
     }
 
-    fprint_usage(stderr, argv[0]);
+    fprint_usage(stdout, argv[0]);
     return -1;
 
     return 0;
@@ -70,11 +70,11 @@ void run_client(const char *host, const char *port)
 
     sgx_status_t status;
 
-
     printf("[%s: %4d] %s\n", "client", __LINE__, "initiator_init_session ...");
     initiator_init_session(global_eid, &status);
     if (status != SGX_SUCCESS)
     {
+        fprintf(stdout, "Error[%04x] @ %4d\n", status, __LINE__);
         exit(EXIT_FAILURE);
     }
 
@@ -85,12 +85,14 @@ void run_client(const char *host, const char *port)
     /* recv msg1 */
     printf("[%s: %4d] %s\n", "client", __LINE__, "read_socket ...");
     read_socket(clientfd, (uint8_t *)&msg1, sizeof(sgx_dh_msg1_t));
+    PRINT_BYTE_ARRAY(stdout, (uint8_t *)&msg1, sizeof(sgx_dh_msg1_t));
 
     /* proc msg1, gen msg2 */
     printf("[%s: %4d] %s\n", "client", __LINE__, "initiator_proc_msg1 ...");
     initiator_proc_msg1(global_eid, &status, &msg1, &msg2);
     if (status != SGX_SUCCESS)
     {
+        fprintf(stdout, "Error[%04x] @ %4d\n", status, __LINE__);
         exit(EXIT_FAILURE);
     }
 
@@ -107,6 +109,7 @@ void run_client(const char *host, const char *port)
     initiator_proc_msg3(global_eid, &status, &msg3);
     if (status != SGX_SUCCESS)
     {
+        fprintf(stdout, "Error[%04x] @ %4d\n", status, __LINE__);
         exit(EXIT_FAILURE);
     }
 
@@ -139,6 +142,7 @@ void handle(int connfd)
     responder_init_session(global_eid, &status);
     if (status != SGX_SUCCESS)
     {
+        fprintf(stdout, "Error[%04x] @ %4d\n", status, __LINE__);
         exit(EXIT_FAILURE);
     }
 
@@ -150,8 +154,12 @@ void handle(int connfd)
     responder_gen_msg1(global_eid, &status, &msg1);
     if (status != SGX_SUCCESS)
     {
+        fprintf(stdout, "Error[%04x] @ %4d\n", status, __LINE__);
         exit(EXIT_FAILURE);
     }
+
+    // printf("[%s: %4d] %s\n", "server", __LINE__, "msg1 generated");
+    // PRINT_BYTE_ARRAY(stdout, (uint8_t *)&msg1, sizeof(sgx_dh_msg1_t));
 
     /* send msg1, recv msg2 */
     printf("[%s: %4d] %s\n", "server", __LINE__, "write_socket ...");
@@ -164,6 +172,7 @@ void handle(int connfd)
     responder_proc_msg2(global_eid, &status, &msg2, &msg3);
     if (status != SGX_SUCCESS)
     {
+        fprintf(stdout, "Error[%04x] @ %4d\n", status, __LINE__);
         exit(EXIT_FAILURE);
     }
 

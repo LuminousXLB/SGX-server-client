@@ -4,3 +4,5 @@
 
 int64_t read_socket(int sockfd, uint8_t *buffer, uint32_t buffer_max_len);
 void write_socket(int sockfd, uint8_t *buffer, uint32_t length);
+
+void PRINT_BYTE_ARRAY(FILE *file, uint8_t *array, uint32_t len);
