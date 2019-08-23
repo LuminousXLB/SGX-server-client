@@ -14,7 +14,7 @@ sgx_key_128bit_t aek;
 /* 
  * Encrypt & Decrypt using AES-CTR-128
  */
-sgx_status_t aes_ctr_128_encrypt(const uint8_t *plaintext, uint32_t pt_len, uint8_t *ciphertext, uint32_t *nonce)
+sgx_status_t aes_ctr_128_encrypt(uint8_t *buffer, uint32_t length, uint32_t *nonce)
 {
     uint8_t counter[4];
     sgx_status_t status = sgx_read_rand(counter, 4);
@@ -25,15 +25,37 @@ sgx_status_t aes_ctr_128_encrypt(const uint8_t *plaintext, uint32_t pt_len, uint
 
     memcpy_s((void *)nonce, sizeof(uint32_t), counter, 4);
 
-    return sgx_aes_ctr_encrypt(&aek, plaintext, pt_len, counter, 1, ciphertext);
+    uint8_t *ciphertext = (uint8_t *)malloc(length);
+
+    status = sgx_aes_ctr_encrypt(&aek, buffer, length, counter, 1, ciphertext);
+    if (status != SGX_SUCCESS)
+    {
+        return status;
+    }
+
+    memcpy_s((void *)buffer, length, ciphertext, length);
+    memset((void *)ciphertext, 0, length);
+
+    return status;
 }
 
-sgx_status_t aes_ctr_128_decrypt(uint32_t nonce, const uint8_t *ciphertext, uint32_t ct_len, uint8_t *plaintext)
+sgx_status_t aes_ctr_128_decrypt(uint8_t *buffer, uint32_t length, uint32_t *nonce)
 {
     uint8_t counter[4];
-    memcpy_s(counter, 4, (void *)&nonce, sizeof(uint32_t));
+    memcpy_s(counter, 4, (void *)nonce, sizeof(uint32_t));
 
-    return sgx_aes_ctr_decrypt(&aek, ciphertext, ct_len, counter, 1, plaintext);
+    uint8_t *plaintext = (uint8_t *)malloc(length);
+
+    sgx_status_t status = sgx_aes_ctr_decrypt(&aek, buffer, length, counter, 1, plaintext);
+    if (status != SGX_SUCCESS)
+    {
+        return status;
+    }
+
+    memcpy_s((void *)buffer, length, plaintext, length);
+    memset((void *)plaintext, 0, length);
+
+    return status;
 }
 
 /*

@@ -64,6 +64,108 @@ int main(int argc, char const *argv[])
     return 0;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+
+sgx_status_t aes_ctr_128_encrypt(uint8_t *buffer, uint32_t length, uint32_t *nonce)
+sgx_status_t aes_ctr_128_decrypt(uint8_t *buffer, uint32_t length, uint32_t *nonce)
+
+*/
+
+#define MESSAGE_LENGTH 256
+
+struct message_tuple
+{
+    uint8_t payload[MESSAGE_LENGTH];
+    uint32_t nonce;
+    uint32_t length;
+};
+
+void write_text_message(int connfd, const char *buf, uint32_t length)
+{
+    printf("[%4d] %s\n", __LINE__, "write_text_message ...");
+
+    sgx_status_t status;
+    message_tuple tuple;
+
+    memset(&tuple, 0, sizeof(message_tuple));
+    memcpy((void *)tuple.payload, (void *)buf, length);
+    tuple.length = length;
+
+    aes_ctr_128_encrypt(global_eid, &status, (uint8_t *)tuple.payload, tuple.length, &tuple.nonce);
+    if (status != SGX_SUCCESS)
+    {
+        fprintf(stdout, "Error[%04x] @ %4d\n", status, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    printf("[%4d] nonce is %08x\n", __LINE__, tuple.nonce);
+    printf("[%4d] length is %u\n", __LINE__, tuple.length);
+
+    // htobe32(tuple.nonce);
+    // htobe32(tuple.length);
+    write_socket(connfd, (uint8_t *)&tuple, sizeof(tuple));
+}
+
+uint32_t read_text_message(int connfd, char *buf)
+{
+    printf("[%4d] %s\n", __LINE__, "read_text_message ...");
+
+    sgx_status_t status;
+    message_tuple tuple;
+
+    memset(&tuple, 0, sizeof(message_tuple));
+
+    read_socket(connfd, (uint8_t *)&tuple, sizeof(tuple));
+    // be32toh(tuple.nonce);
+    // be32toh(tuple.length);
+
+    printf("[%4d] nonce is %08x\n", __LINE__, tuple.nonce);
+    printf("[%4d] length is %u\n", __LINE__, tuple.length);
+    aes_ctr_128_decrypt(global_eid, &status, (uint8_t *)tuple.payload, tuple.length, &tuple.nonce);
+    if (status != SGX_SUCCESS)
+    {
+        fprintf(stdout, "Error[%04x] @ %4d\n", status, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+
+    uint32_t length = tuple.length;
+    memcpy((void *)buf, (void *)tuple.payload, length);
+
+    memset(&tuple, 0, sizeof(message_tuple));
+
+    return length;
+}
+
+void client_business(int clientfd)
+{
+    printf("[%s: %4d] %s\n", "client", __LINE__, "started ...");
+
+    char buf[MESSAGE_LENGTH];
+
+    while (Fgets(buf, MESSAGE_LENGTH, stdin) != NULL)
+    {
+        write_text_message(clientfd, buf, strlen(buf));
+        uint32_t length = read_text_message(clientfd, buf);
+        Fputs(buf, stdout);
+    }
+}
+
+void server_business(int connfd)
+{
+    printf("[%s: %4d] %s\n", "server", __LINE__, "started ...");
+    uint32_t length;
+    char buf[MESSAGE_LENGTH];
+
+    while ((length = read_text_message(connfd, buf)) > 0)
+    {
+        printf("[%4u] > %s\n", length, buf);
+        write_text_message(connfd, buf, length);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 void run_client(const char *host, const char *port)
 {
     int clientfd = Open_clientfd(host, port);
@@ -85,7 +187,7 @@ void run_client(const char *host, const char *port)
     /* recv msg1 */
     printf("[%s: %4d] %s\n", "client", __LINE__, "read_socket ...");
     read_socket(clientfd, (uint8_t *)&msg1, sizeof(sgx_dh_msg1_t));
-    PRINT_BYTE_ARRAY(stdout, (uint8_t *)&msg1, sizeof(sgx_dh_msg1_t));
+    // hexdump(stdout, (uint8_t *)&msg1, sizeof(sgx_dh_msg1_t));
 
     /* proc msg1, gen msg2 */
     printf("[%s: %4d] %s\n", "client", __LINE__, "initiator_proc_msg1 ...");
@@ -113,26 +215,9 @@ void run_client(const char *host, const char *port)
         exit(EXIT_FAILURE);
     }
 
-    // start echo
-    printf("[%s: %4d] %s\n", "client", __LINE__, "started ...");
-    char buf[MAXLINE];
-    uint32_t length = 2;
-
-    while (Fgets(buf, MAXLINE, stdin) != NULL)
-    {
-        write_socket(clientfd, (uint8_t *)buf, strlen(buf));
-        read_socket(clientfd, (uint8_t *)buf, MAXLINE);
-        Fputs(buf, stdout);
-    }
+    client_business(clientfd);
     Close(clientfd);
 }
-
-/*
-
-sgx_status_t encrypt(sgx_enclave_id_t eid, sgx_status_t* retval, const uint8_t* plaintext, uint32_t pt_len, uint8_t* ciphertext, uint32_t* nonce);
-sgx_status_t decrypt(sgx_enclave_id_t eid, sgx_status_t* retval, uint32_t nonce, const uint8_t* ciphertext, uint32_t ct_len, uint8_t* plaintext);
-
-*/
 
 void handle(int connfd)
 {
@@ -180,15 +265,7 @@ void handle(int connfd)
     printf("[%s: %4d] %s\n", "server", __LINE__, "write_socket ...");
     write_socket(connfd, (uint8_t *)&msg3, sizeof(sgx_dh_msg3_t));
 
-    printf("[%s: %4d] %s\n", "server", __LINE__, "started ...");
-    int64_t n;
-    char buf[MAXLINE];
-
-    while ((n = read_socket(connfd, (uint8_t *)buf, MAXLINE)) > 0)
-    {
-        printf("server received %d bytes\n", (int)n);
-        write_socket(connfd, (uint8_t *)buf, n);
-    }
+    server_business(connfd);
 }
 
 void run_server(const char *port)
