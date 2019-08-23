@@ -74,11 +74,16 @@ sgx_status_t aes_ctr_128_decrypt(uint8_t *buffer, uint32_t length, uint32_t *non
 */
 
 #define MESSAGE_LENGTH 256
+#define CIPHER_SCOPE_LENGTH MESSAGE_LENGTH
+
+#ifndef COUNTER_LENGTH_IN_BYTES
+#define COUNTER_LENGTH_IN_BYTES 16
+#endif
 
 struct message_tuple
 {
     uint8_t payload[MESSAGE_LENGTH];
-    uint32_t nonce;
+    uint8_t nonce[COUNTER_LENGTH_IN_BYTES];
     uint32_t length;
 };
 
@@ -93,17 +98,15 @@ void write_text_message(int connfd, const char *buf, uint32_t length)
     memcpy((void *)tuple.payload, (void *)buf, length);
     tuple.length = length;
 
-    aes_ctr_128_encrypt(global_eid, &status, (uint8_t *)tuple.payload, tuple.length, &tuple.nonce);
+    aes_ctr_128_encrypt(global_eid, &status, (uint8_t *)tuple.payload, CIPHER_SCOPE_LENGTH, tuple.nonce);
     if (status != SGX_SUCCESS)
     {
         fprintf(stdout, "Error[%04x] @ %4d\n", status, __LINE__);
         exit(EXIT_FAILURE);
     }
-    printf("[%4d] nonce is %08x\n", __LINE__, tuple.nonce);
     printf("[%4d] length is %u\n", __LINE__, tuple.length);
 
-    // htobe32(tuple.nonce);
-    // htobe32(tuple.length);
+    htobe32(tuple.length);
     write_socket(connfd, (uint8_t *)&tuple, sizeof(tuple));
 }
 
@@ -117,12 +120,10 @@ uint32_t read_text_message(int connfd, char *buf)
     memset(&tuple, 0, sizeof(message_tuple));
 
     read_socket(connfd, (uint8_t *)&tuple, sizeof(tuple));
-    // be32toh(tuple.nonce);
-    // be32toh(tuple.length);
+    be32toh(tuple.length);
 
-    printf("[%4d] nonce is %08x\n", __LINE__, tuple.nonce);
     printf("[%4d] length is %u\n", __LINE__, tuple.length);
-    aes_ctr_128_decrypt(global_eid, &status, (uint8_t *)tuple.payload, tuple.length, &tuple.nonce);
+    aes_ctr_128_decrypt(global_eid, &status, (uint8_t *)tuple.payload, CIPHER_SCOPE_LENGTH, tuple.nonce);
     if (status != SGX_SUCCESS)
     {
         fprintf(stdout, "Error[%04x] @ %4d\n", status, __LINE__);
@@ -147,7 +148,10 @@ void client_business(int clientfd)
     {
         write_text_message(clientfd, buf, strlen(buf));
         uint32_t length = read_text_message(clientfd, buf);
-        Fputs(buf, stdout);
+
+        printf("[%s: %4d] %s\n", "client", __LINE__, "Message returned");
+        hexdump(stdout, (uint8_t *)buf, length);
+        // Fputs(buf, stdout);
     }
 }
 
@@ -159,7 +163,8 @@ void server_business(int connfd)
 
     while ((length = read_text_message(connfd, buf)) > 0)
     {
-        printf("[%4u] > %s\n", length, buf);
+        printf("[%s: %4d] %s\n", "server", __LINE__, "Message coming");
+        hexdump(stdout, (uint8_t *)buf, length);
         write_text_message(connfd, buf, length);
     }
 }
