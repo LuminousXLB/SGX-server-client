@@ -28,3 +28,7 @@ There's a server and a client connected with socket. Upon the connection sucessf
 ## Known issues
 
 There's a significant flaw in the program. In the project, client and server agree with a shared key using the simplest version of Diffie-Hellman Key Exchange Protocol. Document suggests that we should always hold dh_msg buffer in enclave space, but we didn't. So it will be trivial for malicious Operating System to conduct a MiTM attack.
+
+## Thanks
+
+To excellent code base from <http://csapp.cs.cmu.edu/3e/code.html>. I used it to build socket server and client.
