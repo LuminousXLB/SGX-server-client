@@ -34,15 +34,6 @@ int main(int argc, char const *argv[])
         return 1;
     }
 
-    // sgx_status_t status;
-    // status = get_sum(global_eid, &sum_result, 3, 4);
-    // if (status != SGX_SUCCESS)
-    // {
-    //     printf("ECall failed.\n");
-    //     return 1;
-    // }
-    // printf("Sum from enclave: %d\n", sum_result);
-
     if (argc == 3 && *argv[1] == 's')
     {
         const char *port = argv[2];
@@ -65,13 +56,6 @@ int main(int argc, char const *argv[])
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-/*
-
-sgx_status_t aes_ctr_128_encrypt(uint8_t *buffer, uint32_t length, uint32_t *nonce)
-sgx_status_t aes_ctr_128_decrypt(uint8_t *buffer, uint32_t length, uint32_t *nonce)
-
-*/
 
 #define MESSAGE_LENGTH 256
 #define CIPHER_SCOPE_LENGTH MESSAGE_LENGTH
@@ -151,7 +135,6 @@ void client_business(int clientfd)
 
         printf("[%s: %4d] %s\n", "client", __LINE__, "Message returned");
         hexdump(stdout, (uint8_t *)buf, length);
-        // Fputs(buf, stdout);
     }
 }
 
@@ -192,7 +175,6 @@ void run_client(const char *host, const char *port)
     /* recv msg1 */
     printf("[%s: %4d] %s\n", "client", __LINE__, "read_socket ...");
     read_socket(clientfd, (uint8_t *)&msg1, sizeof(sgx_dh_msg1_t));
-    // hexdump(stdout, (uint8_t *)&msg1, sizeof(sgx_dh_msg1_t));
 
     /* proc msg1, gen msg2 */
     printf("[%s: %4d] %s\n", "client", __LINE__, "initiator_proc_msg1 ...");
@@ -247,9 +229,6 @@ void handle(int connfd)
         fprintf(stdout, "Error[%04x] @ %4d\n", status, __LINE__);
         exit(EXIT_FAILURE);
     }
-
-    // printf("[%s: %4d] %s\n", "server", __LINE__, "msg1 generated");
-    // PRINT_BYTE_ARRAY(stdout, (uint8_t *)&msg1, sizeof(sgx_dh_msg1_t));
 
     /* send msg1, recv msg2 */
     printf("[%s: %4d] %s\n", "server", __LINE__, "write_socket ...");
